@@ -4,23 +4,25 @@ import java.util.List;
 import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.dhp.sdk.beans.Ack;
-import com.dhp.sdk.beans.Error;
-import com.dhp.sdk.beans.MessageAck;
-import com.dhp.sdk.beans.Response;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
+import in.gov.abdm.uhi.discovery.controller.DiscoveryController;
 import in.gov.abdm.uhi.discovery.entity.Message;
 import in.gov.abdm.uhi.discovery.entity.Subscriber;
+import in.gov.abdm.uhi.discovery.service.beans.Ack;
+import in.gov.abdm.uhi.discovery.service.beans.MessageAck;
+import in.gov.abdm.uhi.discovery.service.beans.Response;
 import reactor.core.publisher.Mono;
+import in.gov.abdm.uhi.discovery.service.beans.Error;
 
 /**
  * @author Deepak Kumar
@@ -31,8 +33,11 @@ public class DiscoveryService {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(DiscoveryService.class);
 
-	public static Response process(@Valid String req) {
+	@Value("${spring.application.registryurl}")
+	String registry_url;
 
+	public Response process(@Valid String req) {
+		System.out.println("registry_url" + registry_url);
 		// Call to lookup
 		Message listsubs = lookup(req);
 		System.out.println(listsubs.message.toArray());
@@ -54,7 +59,7 @@ public class DiscoveryService {
 			 * + arrNode.size()); if (arrNode.isArray()) {
 			 */
 			for (Subscriber subs : listsubs.message) {
-				 System.out.println(listsubs.message.size());
+				System.out.println(listsubs.message.size());
 
 				/*
 				 * WebClient webClient = WebClient.builder()
@@ -86,7 +91,7 @@ public class DiscoveryService {
 		return generateAck(req);
 	}
 
-	public static Response generateAck(String req) {
+	public Response generateAck(String req) {
 		Ack ack = new Ack();
 		Response resp = new Response();
 		MessageAck msgack = new MessageAck();
@@ -99,7 +104,7 @@ public class DiscoveryService {
 		return resp;
 	}
 
-	public static Response generateNack(String req, Exception ex) {
+	public  Response generateNack(String req, Exception ex) {
 		Ack ack = new Ack();
 		Error err = new Error("", "500", ex.getClass().getCanonicalName(), ex.getMessage());
 		Response resp = new Response();
@@ -121,18 +126,33 @@ public class DiscoveryService {
 		return propertyValue;
 	}
 
-	static public Message lookup(String req) {
+	public Message lookup(String req) {
 
 		ObjectMapper objectMapper = new ObjectMapper();
-		WebClient webClient = WebClient.create("http://192.168.79.236:3030");
-		String message;
+		//String registry_url = "http://192.168.79.236:3030";
+		System.out.println("registry_url|" + registry_url);
+		//WebClient webClient = WebClient.create(registry_url);
+		//String message;
 		try {
 
 			String lookupRequestString = "{\"country\":\"IND\",\"city\":\"std:080\",\"domain\":\"nic2004:85110\",\"type\":\"BPP\",\"status\":\"SUBSCRIBED\"}";
+
 			Subscriber lookupRequest = objectMapper.readValue(lookupRequestString, Subscriber.class);
-			return webClient.post().uri("/api/lookup")
-					.header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-					.body(Mono.just(lookupRequest), Message.class).retrieve().bodyToMono(Message.class).block();
+			/*
+			 * return webClient.post().uri("/api/lookup") .header(HttpHeaders.CONTENT_TYPE,
+			 * MediaType.APPLICATION_JSON_VALUE) .body(Mono.just(lookupRequest),
+			 * Message.class).retrieve().bodyToMono(Message.class).block();
+			 */
+
+			/*
+			 * return webClient.post() .uri("/api/lookup").body(Mono.just(lookupRequest),
+			 * Message.class) .retrieve() .bodyToMono(Message.class) .flatMap(s ->
+			 * webClient.post() .uri("/api/lookup") .retrieve() .bodyToMono(Message.class) )
+			 * .block();
+			 */
+			RestTemplate template = new RestTemplate();
+			Message resp = template.postForObject(registry_url + "/api/lookup", lookupRequest, Message.class);
+			LOGGER.info("Company register successfully::" + resp.toString());
 		} catch (Exception e) {
 
 			e.printStackTrace();

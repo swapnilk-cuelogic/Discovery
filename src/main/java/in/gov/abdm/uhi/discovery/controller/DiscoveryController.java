@@ -5,6 +5,7 @@ import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -15,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
-import com.dhp.sdk.beans.Response;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import in.gov.abdm.uhi.discovery.service.DiscoveryService;
+import in.gov.abdm.uhi.discovery.service.beans.Response;
 import reactor.core.publisher.Mono;
 
 /**
@@ -35,17 +36,17 @@ public class DiscoveryController {
 
 	@Autowired
 	DiscoveryService discoveryService;
-
+	
 	@PostMapping(value = "/api/v1/search", consumes = "application/json", produces = "application/json")
 	public ResponseEntity<Response> search(@Valid @RequestBody String req) {
 		LOGGER.info("Search request| " + req);
-		return ResponseEntity.status(HttpStatus.OK).body(DiscoveryService.process(req));
+		return ResponseEntity.status(HttpStatus.OK).body(discoveryService.process(req));
 	}
 
 	@PostMapping(value = "/api/v1/on_search", consumes = "application/json", produces = "application/json")
 	public ResponseEntity<Response> on_search(@Valid @RequestBody String req) {
 		LOGGER.info("on_Search request| " + req);
-		return ResponseEntity.status(HttpStatus.OK).body(DiscoveryService.generateAck(req));
+		return ResponseEntity.status(HttpStatus.OK).body(discoveryService.generateAck(req));
 	}
 
 	@PostMapping("/on_search")
